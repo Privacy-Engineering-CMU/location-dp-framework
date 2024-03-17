@@ -22,12 +22,9 @@ def process_data():
             )
         )
 
-        # Convert bytes to desired format if necessary
-        part1_data = io.BytesIO(part1_bytes)  # Example: Create in-memory file-like object
+        part1_data = io.BytesIO(part1_bytes)
         part2_data = io.BytesIO(part2_bytes)
 
-        # Process your data here using part1_data and part2_data
-        # ...
 
         return 'Data processed successfully!'
     else:
