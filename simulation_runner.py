@@ -15,9 +15,28 @@ def communicate(a, b, output_dir, user_id):
 		pickle.dump(b, file_b)
 
 def aggregate_from_output_dir(output_dir, datatype):
-	pass
-	print(output_dir)
-	exit()
+	data_a = []
+	data_b = []
+	files = os.listdir(output_dir)
+	for file in files:
+		if file.endswith("_a.pkl"):
+			full_path = os.path.join(output_dir, file)
+			with open(full_path, 'rb') as f:
+				data = pickle.load(f)
+				data_a.append(data)
+		elif file.endswith("_b.pkl"):
+			full_path = os.path.join(output_dir, file)
+			with open(full_path, 'rb') as f:
+				data = pickle.load(f)
+				data_b.append(data)
+
+	if datatype=="one_hot" or datatype=="boolean":
+		data_a = np.stack(data_a)
+		data_b = np.stack(data_b)
+		data = np.concatenate((data_a, data_b), axis=1)
+		data = np.sum(data, axis=0)
+		return data
+
 
 def run_through_dataset(data, datatype, local_mechanism_object, output_dir):
 	allowed_datatypes = ["one_hot", "boolean", "integers", "rankings"]
@@ -28,34 +47,38 @@ def run_through_dataset(data, datatype, local_mechanism_object, output_dir):
 		# splitting
 		split_a, split_b = user[:int(len(user)//2)], user[int(len(user)//2):]
 		communicate(split_a, split_b, output_dir, user_id)
-	aggregate_from_output_dir(output_dir, datatype)
+	return aggregate_from_output_dir(output_dir, datatype)
 	
 
 def main():
-	rr = RandomizedResponse(1)
+	epsilon = 10
 
-	ohs = OneHotSimulator()
-	_, width, height = ohs.terrain_map.shape
+	for local_dp_path, local_dp_obj in zip(["rr"], [RandomizedResponse(epsilon)]):
 
-	data = ohs.get_experimental_instance(0)
-	data = clean_one_hot(data, width, height)
-	run_through_dataset(data, "one_hot", rr, "./output/one_hot/rr/")
-	exit()
+		ohs = OneHotSimulator()
+		_, width, height = ohs.terrain_map.shape
 
-	bs = BooleanSimulator()
-	data = bs.get_experimental_instance()
-	data = clean_boolean(data, width, height)
-	print(data.shape)
+		data = ohs.get_experimental_instance(0)
+		data = clean_one_hot(data, width, height)
+		output = run_through_dataset(data, "one_hot", local_dp_obj, "./output/one_hot/"+local_dp_path+"/")
+		print(output)
 
-	rs = RankingsSimulator()
-	data = rs.get_experimental_instance(0)
-	data = clean_rankings(data, width, height)
-	print(data.shape)
+		bs = BooleanSimulator()
+		data = bs.get_experimental_instance()
+		data = clean_boolean(data, width, height)
+		output = run_through_dataset(data, "boolean", local_dp_obj, "./output/boolean/"+local_dp_path+"/")
+		print(output)
+		exit()
 
-	i_s = IntegerSimulator()
-	data = i_s.get_experimental_instance()
-	data = clean_integers(data, width, height)
-	print(data.shape)
+		rs = RankingsSimulator()
+		data = rs.get_experimental_instance(0)
+		data = clean_rankings(data, width, height)
+		print(data.shape)
+
+		i_s = IntegerSimulator()
+		data = i_s.get_experimental_instance()
+		data = clean_integers(data, width, height)
+		print(data.shape)
 
 if __name__ == '__main__':
 	main()
