@@ -4,7 +4,8 @@ from tqdm import trange
 import pandas as pd
 
 class IntegerSimulator:
-	def __init__(self, num_clients=1000, seed=0):
+	def __init__(self, num_clients=1000, seed=0, max_income=60000):
+		self.max_income = max_income
 		np.random.seed(seed)
 		self.seed = seed
 		self.num_clients = num_clients
@@ -22,7 +23,7 @@ class IntegerSimulator:
 			if len(indices_above_half)<0:
 				raise Exception("Invalid Simulation")
 			random_indices = indices_above_half[np.random.choice(indices_above_half.shape[0])]
-			income = int(60000*np.sqrt(terrain[random_indices[0], random_indices[1]]))
+			income = int(self.max_income*np.sqrt(terrain[random_indices[0], random_indices[1]]))
 			data.append({"zip_code_0":random_indices[0], "zip_code_1":random_indices[1], "integer": income})
 		data = pd.DataFrame(data)
 		data = data.values
