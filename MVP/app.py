@@ -10,20 +10,68 @@ from streamlit_folium import folium_static
 import folium
 import streamlit as st
 
+# @st.cache(hash_funcs={folium.folium.Map: lambda _: None}, allow_output_mutation=True)
+# def make_map(df, diff_steps, display_all=True):
+# 	if display_all:
+# 		main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14) #40.4476° N, 79.9558° W 0.0088, 0.0260
+# 		for row in df:
+# 			bottom_left = [float(row[-3]) - diff_steps[0]/2, float(row[-2]) - diff_steps[1]/2]  # Adjust the 0.001 to change the size of the square
+# 			top_right = [float(row[-3]) + diff_steps[0]/2, float(row[-2]) + diff_steps[1]/2]
+# 			# Create a rectangle and add to the map
+# 			folium.Rectangle(
+# 				bounds=[bottom_left, top_right],
+# 				tooltip=f"{round(row[-1], 3)}",
+# 				fill=True,
+# 				fill_color="blue",
+# 				color="blue",
+# 				fill_opacity=0.1,
+# 				weight=0.1,
+# 			).add_to(main_map)
+# 	return main_map
+
 @st.cache(hash_funcs={folium.folium.Map: lambda _: None}, allow_output_mutation=True)
-def make_map(df, display_all=True):
-	if display_all:
-		main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14) #40.4476° N, 79.9558° W 0.0088, 0.0260
-		for row in df:
-			folium.Marker(location=[float(row[-3]), float(row[-2])],
-				tooltip=f"{round(row[-1], 3)}",
-				fill=True,
-				fill_color="blue",
-				color=None,
-				fill_opacity=0.1,
-				radius=1,
-			).add_to(main_map)
-	return main_map
+def make_map(df, diff_steps, display_all=True):
+    if display_all:
+        main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14)
+        for row in df:
+            # Calculate bounds for the rectangle
+            bottom_left = [float(row[-3]) - diff_steps[0]/2, float(row[-2]) - diff_steps[1]/2]
+            top_right = [float(row[-3]) + diff_steps[0]/2, float(row[-2]) + diff_steps[1]/2]
+            bounds = [bottom_left, top_right]
+            
+            # Define rectangle in GeoJSON format
+            feature = {
+                "type": "Feature",
+                "properties": {
+                    "tooltip": f"{round(row[-1], 3)}"
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[b[1], b[0]] for b in [bottom_left, [bottom_left[0], top_right[1]], top_right, [top_right[0], bottom_left[1]], bottom_left]]]
+                }
+            }
+            
+            # Create a GeoJson object and add it to the map
+            geo_json = folium.GeoJson(
+                feature,
+                style_function=lambda x: {
+                    'fillColor': 'blue',
+                    'color': None,
+                    'fillOpacity': 0.1,
+                    'weight': 0
+                },
+                highlight_function=lambda x: {
+                    'fillColor': 'orange',  # Color on hover
+                    'color': None,
+                    'fillOpacity': 0.3
+                },
+                tooltip=folium.features.GeoJsonTooltip(
+                    fields=['tooltip'],
+                    aliases=['Value:'],
+                    localize=True
+                )
+            ).add_to(main_map)
+    return main_map
 
 def communicate(a, b, output_dir, user_id):
 	os.makedirs(output_dir, exist_ok=True)
@@ -148,7 +196,7 @@ def app():
 				df.append(dictionary)
 		df = pd.DataFrame(df)
 		df = df.values
-		main_map = make_map(df)
+		main_map = make_map(df, diff_steps)
 		folium_static(main_map)
 
 if __name__ == '__main__':
