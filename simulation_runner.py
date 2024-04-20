@@ -59,9 +59,11 @@ def run_through_dataset(data, datatype, local_mechanism_object, output_dir):
 	return aggregate_from_output_dir(output_dir, datatype)
 	
 def main():
-	epsilon = 10
+	epsilon = 1
 
-	for local_dp_path, local_dp_obj in zip(["rr"], [RandomizedResponse(epsilon, max_income=60000)]):
+	for local_dp_path, local_dp_obj in zip(["rr", "em", "gm"], [RandomizedResponse(epsilon, max_income=60000), ExponentialMechanism(epsilon, max_income=60000), GaussianMechanism(epsilon, delta=1e-3, max_income=60000)]):
+		if local_dp_path in ["rr", "em"]:
+			continue
 		print(local_dp_path)
 
 		ohs = OneHotSimulator()

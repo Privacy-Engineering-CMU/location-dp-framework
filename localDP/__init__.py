@@ -1,1 +1,3 @@
 from .randomized_response import RandomizedResponse
+from .exponential_mechanism import ExponentialMechanism
+from .gaussian_mechanism import GaussianMechanism
