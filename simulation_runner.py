@@ -62,6 +62,7 @@ def main():
 	epsilon = 10
 
 	for local_dp_path, local_dp_obj in zip(["rr"], [RandomizedResponse(epsilon, max_income=60000)]):
+		print(local_dp_path)
 
 		ohs = OneHotSimulator()
 		_, width, height = ohs.terrain_map.shape
@@ -81,12 +82,14 @@ def main():
 		data = rs.get_experimental_instance(0)
 		data = clean_rankings(data, width, height)
 		output = run_through_dataset(data, "rankings", local_dp_obj, "./output/rankings/"+local_dp_path+"/")
+		print(output)
 
 		i_s = IntegerSimulator()
 		data = i_s.get_experimental_instance()
 		data = clean_integers(data, width, height)
 		output = run_through_dataset(data, "integers", local_dp_obj, "./output/integers/"+local_dp_path+"/")
 		print(output)
+		print()
 
 if __name__ == '__main__':
 	main()
