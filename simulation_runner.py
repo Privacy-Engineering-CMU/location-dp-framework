@@ -62,8 +62,6 @@ def main():
 	epsilon = 1
 
 	for local_dp_path, local_dp_obj in zip(["rr", "em", "gm"], [RandomizedResponse(epsilon, max_income=60000), ExponentialMechanism(epsilon, max_income=60000), GaussianMechanism(epsilon, delta=1e-3, max_income=60000)]):
-		if local_dp_path in ["rr", "em"]:
-			continue
 		print(local_dp_path)
 
 		ohs = OneHotSimulator()
