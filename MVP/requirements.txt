@@ -1,0 +1,7 @@
+folium
+pandas
+tqdm
+streamlit
+perlin-noise
+matplotlib
+numpy
