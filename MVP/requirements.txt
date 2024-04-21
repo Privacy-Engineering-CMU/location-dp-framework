@@ -5,3 +5,4 @@ streamlit
 perlin-noise
 matplotlib
 numpy
+streamlit_folium
