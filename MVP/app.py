@@ -10,68 +10,63 @@ from streamlit_folium import folium_static
 import folium
 import streamlit as st
 
-# @st.cache(hash_funcs={folium.folium.Map: lambda _: None}, allow_output_mutation=True)
-# def make_map(df, diff_steps, display_all=True):
-# 	if display_all:
-# 		main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14) #40.4476° N, 79.9558° W 0.0088, 0.0260
-# 		for row in df:
-# 			bottom_left = [float(row[-3]) - diff_steps[0]/2, float(row[-2]) - diff_steps[1]/2]  # Adjust the 0.001 to change the size of the square
-# 			top_right = [float(row[-3]) + diff_steps[0]/2, float(row[-2]) + diff_steps[1]/2]
-# 			# Create a rectangle and add to the map
-# 			folium.Rectangle(
-# 				bounds=[bottom_left, top_right],
-# 				tooltip=f"{round(row[-1], 3)}",
-# 				fill=True,
-# 				fill_color="blue",
-# 				color="blue",
-# 				fill_opacity=0.1,
-# 				weight=0.1,
-# 			).add_to(main_map)
-# 	return main_map
-
 @st.cache(hash_funcs={folium.folium.Map: lambda _: None}, allow_output_mutation=True)
 def make_map(df, diff_steps, display_all=True):
-    if display_all:
-        main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14)
-        for row in df:
-            # Calculate bounds for the rectangle
-            bottom_left = [float(row[-3]) - diff_steps[0]/2, float(row[-2]) - diff_steps[1]/2]
-            top_right = [float(row[-3]) + diff_steps[0]/2, float(row[-2]) + diff_steps[1]/2]
-            bounds = [bottom_left, top_right]
-            
-            # Define rectangle in GeoJSON format
-            feature = {
-                "type": "Feature",
-                "properties": {
-                    "tooltip": f"{round(row[-1], 3)}"
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[b[1], b[0]] for b in [bottom_left, [bottom_left[0], top_right[1]], top_right, [top_right[0], bottom_left[1]], bottom_left]]]
-                }
-            }
-            
-            # Create a GeoJson object and add it to the map
-            geo_json = folium.GeoJson(
-                feature,
-                style_function=lambda x: {
-                    'fillColor': 'blue',
-                    'color': None,
-                    'fillOpacity': 0.1,
-                    'weight': 0
-                },
-                highlight_function=lambda x: {
-                    'fillColor': 'orange',  # Color on hover
-                    'color': None,
-                    'fillOpacity': 0.3
-                },
-                tooltip=folium.features.GeoJsonTooltip(
-                    fields=['tooltip'],
-                    aliases=['Value:'],
-                    localize=True
-                )
-            ).add_to(main_map)
-    return main_map
+	if display_all:
+		main_map = folium.Map(location=(40.4432, -79.9428), zoom_start=14)
+		for row in df:
+			# Calculate bounds for the rectangle
+			bottom_left = [float(row[-3]) - diff_steps[0]/2, float(row[-2]) - diff_steps[1]/2]
+			top_right = [float(row[-3]) + diff_steps[0]/2, float(row[-2]) + diff_steps[1]/2]
+			bounds = [bottom_left, top_right]
+			
+			# Define rectangle in GeoJSON format
+			if not np.issubdtype(type(row[-1]), np.str_):
+				feature = {
+					"type": "Feature",
+					"properties": {
+						"tooltip": f"{round(row[-1], 3)}"
+					},
+					"geometry": {
+						"type": "Polygon",
+						"coordinates": [[[b[1], b[0]] for b in [bottom_left, [bottom_left[0], top_right[1]], top_right, [top_right[0], bottom_left[1]], bottom_left]]]
+					}
+				}
+			else:
+				tooltip_text = str(row[-1]).replace("\n", "<br>")
+				feature = {
+					"type": "Feature",
+					"properties": {
+						"tooltip": tooltip_text
+					},
+					"geometry": {
+						"type": "Polygon",
+						"coordinates": [[[b[1], b[0]] for b in [bottom_left, [bottom_left[0], top_right[1]], top_right, [top_right[0], bottom_left[1]], bottom_left]]]
+					}
+				}
+			
+			# Create a GeoJson object and add it to the map
+			geo_json = folium.GeoJson(
+				feature,
+				style_function=lambda x: {
+					'fillColor': 'blue',
+					'color': 'white',
+					'fillOpacity': 0.2,
+					'weight': 1
+				},
+				highlight_function=lambda x: {
+					'fillColor': 'orange',  # Color on hover
+					'color': 'white',
+					'fillOpacity': 0.4,
+					'weight': 1
+				},
+				tooltip=folium.features.GeoJsonTooltip(
+					fields=['tooltip'],
+					aliases=['Value:'],
+					localize=True
+				)
+			).add_to(main_map)
+	return main_map
 
 def communicate(a, b, output_dir, user_id):
 	os.makedirs(output_dir, exist_ok=True)
@@ -151,53 +146,95 @@ def app():
 		_, width, height = ohs.terrain_map.shape
 		if datatype=="One Hot Encoded (Apple's Example)":
 			data_obj = OneHotSimulator()
-			data = data_obj.get_experimental_instance(0)
-			data = clean_one_hot(data, width, height)
+			dataset = []
+			for i in range(5):
+				data = data_obj.get_experimental_instance(0)
+				data = clean_one_hot(data, width, height)
+				dataset.append(data)
 			data_type = "one_hot"
-		elif datatype=="Boolean (Contagion Tracking)":
-			data_obj = BooleanSimulator()
-			data = data_obj.get_experimental_instance()
-			data = clean_boolean(data, width, height)
-			data_type = "boolean"
-		elif datatype=="Integers (Income)":
-			data_obj = IntegerSimulator()
-			data = data_obj.get_experimental_instance()
-			data = clean_integers(data, width, height)	
-			data_type = "integers"
+			if mechanism=="Randomized Response":
+				local_dp_obj = RandomizedResponse(epsilon, max_income=60000)
+				local_dp_path = "rr"
+			elif mechanism=="Exponential Mechanism":
+				local_dp_obj = ExponentialMechanism(epsilon, max_income=60000)
+				local_dp_path = "em"
+			else:
+				local_dp_obj = GaussianMechanism(epsilon, delta=delta, max_income=max_income)
+				local_dp_path = "gm"
+			outputs = []
+			for data in dataset:
+				output = run_through_dataset(data, data_type, local_dp_obj, "./output/"+data_type+"/"+local_dp_path+"/")
+				outputs.append(output)
+			outputs = np.array(outputs)
+			outputs = outputs/np.sum(outputs, axis=0)
+			stringed_outputs = []
+			features = ["Sky", "People", "Path", "Bridge", "Sunset"]
+			for i in range(outputs.shape[1]):
+				string = ""
+				for j in range(outputs.shape[0]):
+					string += str(j+1)+". "+features[j]+"\t"+str(round(100*float(outputs[j][i]), 1))+"%\n"
+				string = string[:-1]
+				stringed_outputs.append(string)
+			output = np.array(stringed_outputs)
+			output = output.reshape((width, height))
+			midpoint = 40.4432, -79.9428
+			diff_range = 0.02, 0.05
+			diff_steps = diff_range[0]/output.shape[0], diff_range[1]/output.shape[1]
+			top_point = midpoint[0]+((output.shape[0]//2)*diff_steps[0]), midpoint[1]-((output.shape[1]//2)*diff_steps[1])
+			df = []
+			for i in range(output.shape[0]):
+				for j in range(output.shape[1]):
+					dictionary = {"x": top_point[0]-diff_steps[0]*i, "y": top_point[1]+diff_steps[1]*j, "value": output[i][j]}
+					df.append(dictionary)
+			df = pd.DataFrame(df)
+			df = df.values
+			main_map = make_map(df, diff_steps)
+			folium_static(main_map)
 		else:
-			data_obj = RankingsSimulator()
-			data = data_obj.get_experimental_instance(0)
-			data = clean_rankings(data, width, height)
-			data_type = "rankings"
+			if datatype=="Boolean (Contagion Tracking)":
+				data_obj = BooleanSimulator()
+				data = data_obj.get_experimental_instance()
+				data = clean_boolean(data, width, height)
+				data_type = "boolean"
+			elif datatype=="Integers (Income)":
+				data_obj = IntegerSimulator()
+				data = data_obj.get_experimental_instance()
+				data = clean_integers(data, width, height)	
+				data_type = "integers"
+			else:
+				data_obj = RankingsSimulator()
+				data = data_obj.get_experimental_instance(0)
+				data = clean_rankings(data, width, height)
+				data_type = "rankings"
 
-		if mechanism=="Randomized Response":
-			local_dp_obj = RandomizedResponse(epsilon, max_income=60000)
-			local_dp_path = "rr"
-		elif mechanism=="Exponential Mechanism":
-			local_dp_obj = ExponentialMechanism(epsilon, max_income=60000)
-			local_dp_path = "em"
-		else:
-			local_dp_obj = GaussianMechanism(epsilon, delta=delta, max_income=max_income)
-			local_dp_path = "gm"
+			if mechanism=="Randomized Response":
+				local_dp_obj = RandomizedResponse(epsilon, max_income=60000)
+				local_dp_path = "rr"
+			elif mechanism=="Exponential Mechanism":
+				local_dp_obj = ExponentialMechanism(epsilon, max_income=60000)
+				local_dp_path = "em"
+			else:
+				local_dp_obj = GaussianMechanism(epsilon, delta=delta, max_income=max_income)
+				local_dp_path = "gm"
 
-		output = run_through_dataset(data, data_type, local_dp_obj, "./output/"+data_type+"/"+local_dp_path+"/")
-		output /= output.shape[0]
-		if data_type=="rankings":
-			output = np.argmax(output, axis=1)
-		output = output.reshape((width, height))
-		midpoint = 40.4432, -79.9428
-		diff_range = 0.02, 0.05
-		diff_steps = diff_range[0]/output.shape[0], diff_range[1]/output.shape[1]
-		top_point = midpoint[0]+((output.shape[0]//2)*diff_steps[0]), midpoint[1]-((output.shape[1]//2)*diff_steps[1])
-		df = []
-		for i in range(output.shape[0]):
-			for j in range(output.shape[1]):
-				dictionary = {"x": top_point[0]-diff_steps[0]*i, "y": top_point[1]+diff_steps[1]*j, "value": output[i][j]}
-				df.append(dictionary)
-		df = pd.DataFrame(df)
-		df = df.values
-		main_map = make_map(df, diff_steps)
-		folium_static(main_map)
+			output = run_through_dataset(data, data_type, local_dp_obj, "./output/"+data_type+"/"+local_dp_path+"/")
+			output /= output.shape[0]
+			if data_type=="rankings":
+				output = np.argmax(output, axis=1)
+			output = output.reshape((width, height))
+			midpoint = 40.4432, -79.9428
+			diff_range = 0.02, 0.05
+			diff_steps = diff_range[0]/output.shape[0], diff_range[1]/output.shape[1]
+			top_point = midpoint[0]+((output.shape[0]//2)*diff_steps[0]), midpoint[1]-((output.shape[1]//2)*diff_steps[1])
+			df = []
+			for i in range(output.shape[0]):
+				for j in range(output.shape[1]):
+					dictionary = {"x": top_point[0]-diff_steps[0]*i, "y": top_point[1]+diff_steps[1]*j, "value": output[i][j]}
+					df.append(dictionary)
+			df = pd.DataFrame(df)
+			df = df.values
+			main_map = make_map(df, diff_steps)
+			folium_static(main_map)
 
 if __name__ == '__main__':
 	app()

@@ -1,3 +1,4 @@
+diffprivlib
 folium
 pandas
 tqdm
